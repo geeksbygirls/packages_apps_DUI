@@ -94,12 +94,10 @@ public class SmartBarEditor extends BaseEditor implements View.OnTouchListener {
     static final int POPUP_TYPE_TAP = 2;
     static final int POPUP_TYPE_ICON = 3;
 
-    public static final String BACK = ActionConstants.Smartbar.BUTTON1_TAG;
-    public static final String HOME = ActionConstants.Smartbar.BUTTON2_TAG;
-
     public static final int PHONE_MAX_BUTTONS = 7;
     public static final int TABLET_MAX_BUTTONS = 10;
 
+    private boolean mIsButtonMoving;
     // true == we're currently checking for long press
     private boolean mLongPressed;
     // start point of the current drag operation
@@ -128,53 +126,55 @@ public class SmartBarEditor extends BaseEditor implements View.OnTouchListener {
     private QuickAction.OnActionItemClickListener mQuickClickListener = new QuickAction.OnActionItemClickListener() {
         @Override
         public void onItemClick(QuickAction source, int pos, int actionId) {
-            Intent intent;
-            switch (actionId) {
-                case MENU_MAP_ACTIONS:
-                    postSecondaryPopup(POPUP_TYPE_TAP);
-                    break;
-                case MENU_MAP_ICON:
-                    postSecondaryPopup(POPUP_TYPE_ICON);
-                    break;
-                case MENU_MAP_ADD:
-                    addButton();
-                    break;
-                case MENU_MAP_REMOVE:
-                    removeButton();
-                    break;
-                case MENU_MAP_CANCEL:
-                    break;
-                case MENU_MAP_FINISH:
-                    changeEditMode(MODE_OFF);
-                    break;
-                case MENU_MAP_ACTIONS_SINGLE_TAP:
-                    startActionPicker(ActionConfig.PRIMARY);
-                    break;
-                case MENU_MAP_ACTIONS_LONG_PRESS:
-                    startActionPicker(ActionConfig.SECOND);
-                    break;
-                case MENU_MAP_ACTIONS_DOUBLE_TAP:
-                    startActionPicker(ActionConfig.THIRD);
-                    break;
-                case MENU_MAP_ICON_ICON_PACK:
-                    intent = new Intent();
-                    intent.setAction(Intent.ACTION_MAIN);
-                    intent.setClassName(INTENT_ACTION_EDIT_CLASS,
-                            INTENT_ACTION_ICON_PICKER_COMPONENT);
-                    mContext.startActivityAsUser(intent, UserHandle.CURRENT);
-                    break;
-                case MENU_MAP_ICON_ICON_GALLERY:
-                    intent = new Intent();
-                    intent.setAction(Intent.ACTION_MAIN);
-                    intent.setClassName(INTENT_ACTION_EDIT_CLASS,
-                            INTENT_ACTION_GALLERY_PICKER_COMPONENT);
-                    mContext.startActivityAsUser(intent, UserHandle.CURRENT);
-                    break;
-                case MENU_MAP_ICON_ICON_COLOR:
-                    break;
-                case MENU_MAP_ICON_ICON_RESET:
-                    resetIcon();
-                    break;
+            if (!mIsButtonMoving) { //don't do anything if the user is dragging the button
+                Intent intent;
+                switch (actionId) {
+                    case MENU_MAP_ACTIONS:
+                        postSecondaryPopup(POPUP_TYPE_TAP);
+                        break;
+                    case MENU_MAP_ICON:
+                        postSecondaryPopup(POPUP_TYPE_ICON);
+                        break;
+                    case MENU_MAP_ADD:
+                        addButton();
+                        break;
+                    case MENU_MAP_REMOVE:
+                        removeButton();
+                        break;
+                    case MENU_MAP_CANCEL:
+                        break;
+                    case MENU_MAP_FINISH:
+                        changeEditMode(MODE_OFF);
+                        break;
+                    case MENU_MAP_ACTIONS_SINGLE_TAP:
+                        startActionPicker(ActionConfig.PRIMARY);
+                        break;
+                    case MENU_MAP_ACTIONS_LONG_PRESS:
+                        startActionPicker(ActionConfig.SECOND);
+                        break;
+                    case MENU_MAP_ACTIONS_DOUBLE_TAP:
+                        startActionPicker(ActionConfig.THIRD);
+                        break;
+                    case MENU_MAP_ICON_ICON_PACK:
+                        intent = new Intent();
+                        intent.setAction(Intent.ACTION_MAIN);
+                        intent.setClassName(INTENT_ACTION_EDIT_CLASS,
+                                INTENT_ACTION_ICON_PICKER_COMPONENT);
+                        mContext.startActivityAsUser(intent, UserHandle.CURRENT);
+                        break;
+                    case MENU_MAP_ICON_ICON_GALLERY:
+                        intent = new Intent();
+                        intent.setAction(Intent.ACTION_MAIN);
+                        intent.setClassName(INTENT_ACTION_EDIT_CLASS,
+                                INTENT_ACTION_GALLERY_PICKER_COMPONENT);
+                        mContext.startActivityAsUser(intent, UserHandle.CURRENT);
+                        break;
+                    case MENU_MAP_ICON_ICON_COLOR:
+                        break;
+                    case MENU_MAP_ICON_ICON_RESET:
+                        resetIcon();
+                        break;
+                }
             }
         }
     };
@@ -331,13 +331,6 @@ public class SmartBarEditor extends BaseEditor implements View.OnTouchListener {
         Intent intent = new Intent();
         intent.setAction(Intent.ACTION_MAIN);
         intent.setClassName(INTENT_ACTION_EDIT_CLASS, INTENT_ACTION_EDIT_COMPONENT);
-        if (mTapHasFocusTag == ActionConfig.PRIMARY) { // exclude single tap back, home, recent
-            String[] exclude = {
-                    ActionHandler.SYSTEMUI_TASK_BACK,
-                    ActionHandler.SYSTEMUI_TASK_HOME
-            };
-            intent.putExtra("excluded_actions", exclude);
-        }
         mContext.startActivityAsUser(intent, UserHandle.CURRENT);
     }
 
@@ -478,6 +471,7 @@ public class SmartBarEditor extends BaseEditor implements View.OnTouchListener {
             return false;
         }
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
+            mIsButtonMoving = true;
             if (mPopup != null) {
                 QuickAction popup = mPopup;
                 popup.dismiss();
@@ -490,6 +484,7 @@ public class SmartBarEditor extends BaseEditor implements View.OnTouchListener {
             mHost.postDelayed(mCheckLongPress, QUICK_LONG_PRESS);
             mHost.postDelayed(mCheckShowPopup, POPUP_LONG_PRESS);
         } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
+            // mIsButtonMoving still true;
             view.setPressed(false);
             if (!mLongPressed) {
                 return false;
@@ -524,6 +519,7 @@ public class SmartBarEditor extends BaseEditor implements View.OnTouchListener {
             switchId(affectedView, view);
         } else if (event.getAction() == MotionEvent.ACTION_UP
                 || event.getAction() == MotionEvent.ACTION_CANCEL) {
+            mIsButtonMoving = false;
             view.setPressed(false);
             mHost.removeCallbacks(mCheckLongPress);
             mHost.removeCallbacks(mCheckShowPopup);
@@ -581,10 +577,6 @@ public class SmartBarEditor extends BaseEditor implements View.OnTouchListener {
             for (int i = 1; i < mTapMenuItems.size() + 1; i++) {
                 item = mTapMenuItems.get(i);
                 int id = item.getActionId();
-                if (id == MENU_MAP_ACTIONS_SINGLE_TAP &&
-                        (tag.equals(BACK) || tag.equals(HOME))) {
-                    continue;
-                }
                 popup.addActionItem(item);
             }
         } else if (type == POPUP_TYPE_ICON) {
@@ -601,10 +593,6 @@ public class SmartBarEditor extends BaseEditor implements View.OnTouchListener {
                 item = mPrimaryMenuItems.get(i);
                 int id = item.getActionId();
                 if (id == MENU_MAP_ADD && hasMaxButtons) {
-                    continue;
-                }
-                if (id == MENU_MAP_REMOVE &&
-                        (tag.equals(BACK) || tag.equals(HOME))) {
                     continue;
                 }
                 popup.addActionItem(item);

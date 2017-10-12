@@ -30,13 +30,16 @@ import com.facebook.rebound.SpringConfig;
 import com.facebook.rebound.SpringListener;
 
 import android.animation.ObjectAnimator;
+import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.media.AudioManager;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 //import android.content.res.ThemeConfig;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
+import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.accessibility.AccessibilityEvent;
@@ -47,13 +50,13 @@ public class SmartButtonView extends ImageView {
     private static final String TAG = "StatusBar.KeyButtonView";
     private static final boolean DEBUG = false;
 
-    // TODO: make this dynamic again
-    private static final int DT_TIMEOUT = ViewConfiguration.getDoubleTapTimeout();
-    private static final int LP_TIMEOUT = ViewConfiguration.getLongPressTimeout();
-
     // AOSP values feel rather slow, shave off some slack
-    private static int sLongPressTimeout = LP_TIMEOUT - 100;
+    // changing double tap timeout also affects single tap
+    // so we can't play so much with it
+    private static final int DT_TIMEOUT = ViewConfiguration.getDoubleTapTimeout();
     private static int sDoubleTapTimeout = DT_TIMEOUT - 100;
+
+    private static int sLongPressTimeout;
 
     // Rebound spring config
     private static double TENSION = 130;
@@ -75,6 +78,13 @@ public class SmartButtonView extends ImageView {
     private SmartBarView mHost;
     View.OnLongClickListener mLongPressBackListener;
 
+    static AudioManager mAudioManager;
+    static AudioManager getAudioManager(Context context) {
+        if (mAudioManager == null)
+            mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        return mAudioManager;
+    }
+
     private Spring mSpring;
     private SpringListener mSpringListener = new SpringListener() {
 
@@ -93,7 +103,7 @@ public class SmartButtonView extends ImageView {
             float scale = 1f - (value * 0.5f);
             setScaleX(scale);
             setScaleY(scale);
-        }    
+        }
     };
 
     public SmartButtonView(Context context) {
@@ -112,6 +122,7 @@ public class SmartButtonView extends ImageView {
         super(context, attrs, defStyleAttr, defStyleRes);
         setClickable(true);
         setLongClickable(false);
+        mAudioManager = getAudioManager(context);
     }
 
     public void setHost(SmartBarView host) {
@@ -207,7 +218,7 @@ public class SmartButtonView extends ImageView {
         final boolean keyguardShowing = mHost.isKeyguardShowing();
         if (!keyguardShowing
                 || (keyguardShowing && ActionHandler.SYSTEMUI_TASK_BACK.equals(action))) {
-            ActionHandler.performTask(mContext, action);
+             ActionHandler.performTask(mContext, action);
         }
     }
 
@@ -321,6 +332,7 @@ public class SmartButtonView extends ImageView {
                     mSpring.setEndValue(1f);
                 }
                 performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                playSoundEffect(SoundEffectConstants.CLICK);
                 if (isDoubleTapPending) {
                     isDoubleTapPending = false;
                     wasConsumed = true;
@@ -395,6 +407,7 @@ public class SmartButtonView extends ImageView {
         wasConsumed = true;
         if (mScreenPinningEnabled && mLongPressBackListener != null) {
             performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            playSoundEffect(SoundEffectConstants.CLICK);
             sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_LONG_CLICKED);
             mLongPressBackListener.onLongClick(this);
         } else {
@@ -402,6 +415,7 @@ public class SmartButtonView extends ImageView {
                 String action = mConfig.getActionConfig(ActionConfig.SECOND).getAction();
                 fireActionIfSecure(action);
                 performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                playSoundEffect(SoundEffectConstants.CLICK);
                 sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_LONG_CLICKED);
             }
         }
@@ -435,4 +449,18 @@ public class SmartButtonView extends ImageView {
             }
         }
     };
+
+    public void playSoundEffect(int soundConstant) {
+        if(isSoundEnabled()) {
+           mAudioManager.playSoundEffect(soundConstant, ActivityManager.getCurrentUser());
+        }
+    };
+
+    private boolean isSoundEnabled() {
+        return mHost.IsSoundEnabled();
+    }
+
+    protected static void setButtonLongpressDelay(int delay) {
+        sLongPressTimeout = delay;
+    }
 }

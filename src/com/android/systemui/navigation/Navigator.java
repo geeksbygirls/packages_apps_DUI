@@ -45,6 +45,7 @@ public interface Navigator {
     public boolean isVertical();
     public abstract BarTransitions getBarTransitions();
     public void onHandlePackageChanged();
+    public void shiftNavigationBarItems(int top,int bottom);
     public void setForgroundColor(Drawable drawable);
     public void setLeftInLandscape(boolean isLeftInLandscape);
     public void setKeyguardShowing(boolean showing);
@@ -58,7 +59,6 @@ public interface Navigator {
     public void setOnVerticalChangedListener(OnVerticalChangedListener onVerticalChangedListener);
     public void dispose();
     public void notifyScreenOn(boolean screenOn);
-    public void setSlippery(boolean newSlippery);
     public void setDisabledFlags(int disabledFlags, boolean force);
     public void setNavigationIconHints(int hints);
     public void setMenuVisibility(boolean showMenu);

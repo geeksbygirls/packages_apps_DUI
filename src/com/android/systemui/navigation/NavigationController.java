@@ -37,6 +37,7 @@ import com.android.systemui.navigation.Navigator;
 import com.android.systemui.navigation.pulse.PulseController;
 import com.android.systemui.navigation.smartbar.SmartBarView;
 import com.android.systemui.statusbar.phone.PhoneStatusBar;
+import com.android.systemui.statusbar.policy.BurnInProtectionController;
 import com.android.systemui.R;
 
 import android.app.admin.DevicePolicyManager;
@@ -71,10 +72,13 @@ public class NavigationController implements PackageChangedListener {
     private final NavbarOverlayResources mResourceMap;
     private boolean mScreenPinningEnabled;
     private Configuration mConfiguration;
+    private Resources mResources;
+    private boolean mLeftInLandscape;
 
     private final Runnable mAddNavbar = new Runnable() {
         @Override
         public void run() {
+            mResourceMap.updateResources(mResources);
             mBar.forceAddNavigationBar(false);
         }
     };
@@ -131,6 +135,7 @@ public class NavigationController implements PackageChangedListener {
         mContext = context;
         mBar = statusBar;
         mResourceMap = new NavbarOverlayResources(context, themedRes);
+        mResources = themedRes;
         mConfiguration = new Configuration();
         mConfiguration.updateFrom(context.getResources().getConfiguration());
         mWindowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
@@ -149,6 +154,13 @@ public class NavigationController implements PackageChangedListener {
         }
         mConfiguration.updateFrom(newConfig);
         return handled;
+    }
+
+    public void leftInLandscapeChanged(boolean isLeft) {
+        mLeftInLandscape = isLeft;
+        if (mNavigationBarView != null) {
+            mNavigationBarView.setLeftInLandscape(isLeft);
+        }
     }
 
     public void recreateNavigationBar(Context context) {
@@ -171,6 +183,7 @@ public class NavigationController implements PackageChangedListener {
         mNavigationBarView.setStatusBar(mBar);
         mNavigationBarView.setResourceMap(mResourceMap);
         mNavigationBarView.setControllers(mPulseController);
+        mNavigationBarView.setLeftInLandscape(mLeftInLandscape);
     }
 
     public Navigator getBar() {
@@ -257,6 +270,11 @@ public class NavigationController implements PackageChangedListener {
         }
         return DUActionUtils.getIdentifier(mContext, "screen_pinning_unlock_none",
                 DUActionUtils.STRING, "com.android.settings");
+    }
+
+    public void setBarView(BurnInProtectionController protector, boolean visible) {
+         protector.setNavigationBarView(
+                 visible ? mNavigationBarView : null);
     }
 
     // for now, it makes sense to let PhoneStatusBar add/remove navbar view

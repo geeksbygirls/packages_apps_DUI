@@ -113,6 +113,13 @@ public abstract class BaseNavigationBar extends LinearLayout implements Navigato
     protected boolean mCarMode = false;
     protected boolean mDockedStackExists;
 
+    private int mBasePaddingBottom;
+    private int mBasePaddingLeft;
+    private int mBasePaddingRight;
+    private int mBasePaddingTop;
+
+    private ViewGroup mNavigationBarContents;
+
     private class H extends Handler {
         public void handleMessage(Message m) {
             switch (m.what) {
@@ -397,7 +404,7 @@ public abstract class BaseNavigationBar extends LinearLayout implements Navigato
         setDisabledFlags(mDisabledFlags, true);
     }
 
-    public void setSlippery(boolean newSlippery) {
+    protected void setSlippery(boolean newSlippery) {
         WindowManager.LayoutParams lp = (WindowManager.LayoutParams) getLayoutParams();
         if (lp != null) {
             boolean oldSlippery = (lp.flags & WindowManager.LayoutParams.FLAG_SLIPPERY) != 0;
@@ -423,7 +430,7 @@ public abstract class BaseNavigationBar extends LinearLayout implements Navigato
 
         if (DEBUG) {
             Log.d(TAG, "reorient(): rot=" + mDisplay.getRotation());
-        }      
+        }
     }
 
     @Override
@@ -435,6 +442,11 @@ public abstract class BaseNavigationBar extends LinearLayout implements Navigato
         mRotatedViews[Surface.ROTATION_90] = mRot90;
         mRotatedViews[Surface.ROTATION_270] = mRotatedViews[Surface.ROTATION_90];
         mCurrentView = mRotatedViews[Surface.ROTATION_0];
+        mNavigationBarContents = (ViewGroup) mCurrentView.findViewById(R.id.nav_buttons);
+        mBasePaddingLeft = mNavigationBarContents.getPaddingStart();
+        mBasePaddingTop = mNavigationBarContents.getPaddingTop();
+        mBasePaddingRight = mNavigationBarContents.getPaddingEnd();
+        mBasePaddingBottom = mNavigationBarContents.getPaddingBottom();
     }
 
     public void setDisabledFlags(int disabledFlags, boolean force) {
@@ -447,10 +459,6 @@ public abstract class BaseNavigationBar extends LinearLayout implements Navigato
         final boolean disableBack = ((disabledFlags & View.STATUS_BAR_DISABLE_BACK) != 0)
                 && ((mNavigationIconHints & StatusBarManager.NAVIGATION_HINT_BACK_ALT) == 0);
         final boolean disableSearch = ((disabledFlags & View.STATUS_BAR_DISABLE_SEARCH) != 0);
-
-        if (SLIPPERY_WHEN_DISABLED) {
-            setSlippery(disableHome && disableRecent && disableBack && disableSearch);
-        }
     }
 
     @Override
@@ -642,5 +650,18 @@ public abstract class BaseNavigationBar extends LinearLayout implements Navigato
     protected static String viewInfo(View v) {
         return "[(" + v.getLeft() + "," + v.getTop() + ")(" + v.getRight() + "," + v.getBottom()
                 + ") " + v.getWidth() + "x" + v.getHeight() + "]";
+    }
+
+    @Override
+    public void shiftNavigationBarItems(int horizontalShift, int verticalShift) {
+        if (mNavigationBarContents == null) {
+            return;
+        }
+
+        mNavigationBarContents.setPaddingRelative(mBasePaddingLeft + horizontalShift,
+                mBasePaddingTop + verticalShift,
+                mBasePaddingRight + horizontalShift,
+                mBasePaddingBottom - verticalShift);
+        invalidate();
     }
 }
